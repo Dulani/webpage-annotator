@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageList = document.getElementById('page-list');
     const textContentDiv = document.getElementById('text-content');
     const editBtn = document.getElementById('edit-btn');
+    const colorPaletteToolbar = document.querySelector('.toolbar'); // Get the toolbar
     const colorBtns = document.querySelectorAll('.color-btn');
 
     const annotationPopup = document.getElementById('annotation-popup');
@@ -81,12 +82,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Text Selection and Highlighting ---
 
+    // Hide toolbar initially (CSS already does this, but good for consistency)
+    if (colorPaletteToolbar) {
+        colorPaletteToolbar.classList.remove('active');
+    }
+
+    document.addEventListener('selectionchange', () => {
+        const selection = window.getSelection();
+        if (!selection.isCollapsed && textContentDiv.contains(selection.anchorNode) && textContentDiv.contains(selection.focusNode)) {
+            // Check if the selection is within an editable area and not part of an existing annotation interaction
+            if (!isEditing && !annotationPopup.style.display !== 'none' && !commentModal.style.display !== 'none') {
+                 if (colorPaletteToolbar) colorPaletteToolbar.classList.add('active');
+            }
+        } else {
+            // Hide toolbar if selection is collapsed or outside relevant area
+            // Add a small delay to allow clicking on buttons in the toolbar
+            setTimeout(() => {
+                const newSelection = window.getSelection();
+                if (newSelection.isCollapsed) {
+                    if (colorPaletteToolbar) colorPaletteToolbar.classList.remove('active');
+                }
+            }, 200);
+        }
+    });
+
+
     colorBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             currentHighlightColor = btn.dataset.color;
             colorBtns.forEach(b => b.classList.remove('active-color'));
             btn.classList.add('active-color');
             console.log("Highlight color set to:", currentHighlightColor);
+            // Toolbar should remain visible after color selection if text is still selected.
+            // The selectionchange event will handle hiding it if selection is lost.
         });
     });
     // Set default selected color button
