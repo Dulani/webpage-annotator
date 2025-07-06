@@ -3,11 +3,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageList = document.getElementById('page-list');
     const textContentDiv = document.getElementById('text-content');
     const editBtn = document.getElementById('edit-btn');
-    const colorBtns = document.querySelectorAll('.color-btn');
+    // const colorPaletteToolbar = document.querySelector('.toolbar'); // Toolbar removed
+    // const colorBtns = document.querySelectorAll('.color-btn'); // Color buttons removed
 
     const annotationPopup = document.getElementById('annotation-popup');
     const closePopupBtn = annotationPopup.querySelector('.close-btn');
-    const changeColorBtn = document.getElementById('change-color-btn');
+    // const changeColorBtn = document.getElementById('change-color-btn'); // Change color button removed
     const addCommentBtn = document.getElementById('add-comment-btn');
     const deleteAnnotationBtn = document.getElementById('delete-annotation-btn');
 
@@ -37,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPageId = null;
     let selectedAnnotation = null; // To keep track of the clicked annotation span
     let isEditing = false;
-    let currentHighlightColor = 'yellow'; // Default highlight color
+    const currentHighlightColor = 'yellow'; // Default and only highlight color
 
     // --- Page Loading and Rendering ---
 
@@ -81,19 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Text Selection and Highlighting ---
 
-    colorBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            currentHighlightColor = btn.dataset.color;
-            colorBtns.forEach(b => b.classList.remove('active-color'));
-            btn.classList.add('active-color');
-            console.log("Highlight color set to:", currentHighlightColor);
-        });
-    });
-    // Set default selected color button
-    const defaultColorButton = document.querySelector(`.color-btn[data-color="${currentHighlightColor}"]`);
-    if (defaultColorButton) {
-        defaultColorButton.classList.add('active-color');
-    }
+    // Color palette toolbar and buttons are removed, so no need for this logic.
+    // document.addEventListener('selectionchange', () => { ... });
+    // colorBtns.forEach(btn => { ... });
+    // const defaultColorButton = ...;
 
     function getPathTo(element) {
         if (element === textContentDiv) return [];
@@ -247,24 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Annotation Popup Actions ---
 
-    changeColorBtn.addEventListener('click', () => {
-        if (!selectedAnnotation || !currentPageId) return;
-        // Simple: Cycle through available colors or open a color picker
-        // For now, let's just allow picking from the existing toolbar colors
-        // This would require a small UI to pick the new color from the popup.
-        // For simplicity, let's assume the user has already selected a new color from the main toolbar.
-        const newColor = currentHighlightColor; // Use the globally selected color
-        const annotationId = selectedAnnotation.dataset.annotationId;
-        const annotation = pagesData[currentPageId].annotations.find(a => a.id === annotationId);
-
-        if (annotation) {
-            selectedAnnotation.classList.remove(annotation.color); // Remove old color class
-            selectedAnnotation.classList.add(newColor); // Add new color class
-            annotation.color = newColor;
-            console.log(`Annotation ${annotationId} color changed to ${newColor}`);
-        }
-        closeModal(annotationPopup);
-    });
+    // changeColorBtn event listener removed as the button is removed.
 
     addCommentBtn.addEventListener('click', () => {
         if (!selectedAnnotation || !currentPageId) return;
