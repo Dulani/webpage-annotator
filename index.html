@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Annotation Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Text Annotation Tool</h1>
+            <button id="edit-btn">Edit Text</button>
+        </header>
+
+        <div class="sidebar">
+            <h2>Sample Pages</h2>
+            <ul id="page-list">
+                <!-- Sample pages will be listed here -->
+            </ul>
+        </div>
+
+        <main>
+            <div class="toolbar">
+                <h3>Highlight Colors</h3>
+                <button class="color-btn" data-color="yellow">Yellow</button>
+                <button class="color-btn" data-color="pink">Pink</button>
+                <button class="color-btn" data-color="lightblue">Blue</button>
+            </div>
+            <div id="text-content" contenteditable="false">
+                <!-- Text content will be loaded here -->
+                <p>Select a page from the sidebar to view its content.</p>
+            </div>
+        </main>
+
+        <div id="annotation-popup" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-btn">&times;</span>
+                <h4>Annotation Options</h4>
+                <button id="change-color-btn">Change Color</button>
+                <button id="add-comment-btn">Add Comment</button>
+                <button id="delete-annotation-btn">Delete</button>
+            </div>
+        </div>
+
+        <div id="comment-modal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-comment-modal-btn">&times;</span>
+                <h4>Add Comment</h4>
+                <textarea id="comment-input" placeholder="Enter your comment..."></textarea>
+                <button id="save-comment-btn">Save Comment</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
