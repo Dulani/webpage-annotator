@@ -3,4 +3,4 @@ I want to start building a collection of tools to manage and annotate text (wher
 
 This will primarily be built with Google's Jules AI
 
-[Try It](dulani.github.io/webpage-annotator/)
+[Try It](httpps://dulani.github.io/webpage-annotator/index.html)
