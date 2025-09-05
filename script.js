@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selection = window.getSelection();
         if (!selection.isCollapsed && textContentDiv.contains(selection.anchorNode) && textContentDiv.contains(selection.focusNode)) {
             // Check if the selection is within an editable area and not part of an existing annotation interaction
-            if (!isEditing && !annotationPopup.style.display !== 'none' && !commentModal.style.display !== 'none') {
+            if (!isEditing && annotationPopup.style.display === 'none' && commentModal.style.display === 'none') {
                  if (colorPaletteToolbar) colorPaletteToolbar.classList.add('active');
             }
         } else {
@@ -108,6 +108,72 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Helper to create an annotation from the current selection (if valid)
+    function createAnnotationFromCurrentSelection(selectedColor) {
+        if (isEditing || !currentPageId) return;
+
+        const selection = window.getSelection();
+        if (!selection.rangeCount || selection.isCollapsed) return;
+
+        const range = selection.getRangeAt(0);
+        if (!textContentDiv.contains(range.commonAncestorContainer)) {
+            console.warn("Selection is outside the content area.");
+            return;
+        }
+
+        // Prevent creating annotations that overlap existing highlights
+        if (
+            (range.startContainer.parentElement && range.startContainer.parentElement.classList.contains('highlight')) ||
+            (range.endContainer.parentElement && range.endContainer.parentElement.classList.contains('highlight')) ||
+            (range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE && range.commonAncestorContainer.classList && range.commonAncestorContainer.classList.contains('highlight')) ||
+            (range.commonAncestorContainer.nodeType !== Node.ELEMENT_NODE && range.commonAncestorContainer.parentElement && range.commonAncestorContainer.parentElement.classList.contains('highlight'))
+        ) {
+            console.log("Selection is already part of an annotation or contains one.");
+            return;
+        }
+
+        const annotationId = Date.now().toString();
+        const newAnnotation = {
+            id: annotationId,
+            color: selectedColor,
+            comment: "",
+            // Storing range requires more robust serialization.
+            // For simplicity, we'll store paths and offsets.
+            // This is still simplified and might break with complex HTML edits.
+            startContainerPath: getPathTo(range.startContainer),
+            startOffset: range.startOffset,
+            endContainerPath: getPathTo(range.endContainer),
+            endOffset: range.endOffset,
+        };
+
+        const span = document.createElement('span');
+        span.className = `highlight ${newAnnotation.color}`;
+        span.dataset.annotationId = newAnnotation.id;
+        span.addEventListener('click', handleAnnotationClick);
+
+        try {
+            if (range.startContainer === range.endContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
+                range.surroundContents(span);
+            } else {
+                const fragment = range.extractContents();
+                span.appendChild(fragment);
+                range.insertNode(span);
+            }
+            selection.removeAllRanges();
+
+            if (!pagesData[currentPageId].annotations) {
+                pagesData[currentPageId].annotations = [];
+            }
+            pagesData[currentPageId].annotations.push(newAnnotation);
+            console.log(`Annotation created:`, newAnnotation);
+        } catch (e) {
+            console.error("Error surrounding contents:", e);
+            // Restore selection if highlighting failed
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }
+
 
     colorBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -117,6 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Highlight color set to:", currentHighlightColor);
             // Toolbar should remain visible after color selection if text is still selected.
             // The selectionchange event will handle hiding it if selection is lost.
+            
+            // New feature: apply highlight immediately if there's an active selection
+            createAnnotationFromCurrentSelection(currentHighlightColor);
         });
     });
     // Set default selected color button
@@ -156,72 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     textContentDiv.addEventListener('mouseup', () => {
         if (isEditing || !currentPageId) return;
-
-        const selection = window.getSelection();
-        if (!selection.rangeCount || selection.isCollapsed) return;
-
-        const range = selection.getRangeAt(0);
-        if (!textContentDiv.contains(range.commonAncestorContainer)) {
-            console.warn("Selection is outside the content area.");
-            return;
-        }
-
-        if (range.startContainer.parentElement.classList.contains('highlight') ||
-            range.endContainer.parentElement.classList.contains('highlight') ||
-            range.commonAncestorContainer.classList.contains('highlight') ||
-            range.commonAncestorContainer.nodeType !== Node.ELEMENT_NODE && range.commonAncestorContainer.parentElement.classList.contains('highlight')
-        ) {
-            console.log("Selection is already part of an annotation or contains one.");
-            return;
-        }
-
-        const annotationId = Date.now().toString();
-        const newAnnotation = {
-            id: annotationId,
-            color: currentHighlightColor,
-            comment: "",
-            // Storing range requires more robust serialization.
-            // For simplicity, we'll store paths and offsets.
-            // This is still simplified and might break with complex HTML edits.
-            startContainerPath: getPathTo(range.startContainer),
-            startOffset: range.startOffset,
-            endContainerPath: getPathTo(range.endContainer),
-            endOffset: range.endOffset,
-        };
-
-        const span = document.createElement('span');
-        span.className = `highlight ${newAnnotation.color}`;
-        span.dataset.annotationId = newAnnotation.id;
-        span.addEventListener('click', handleAnnotationClick);
-
-        try {
-            // More robust way to handle selections that might span multiple text nodes
-            // but not across different block elements for this simple implementation.
-            if (range.startContainer === range.endContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
-                range.surroundContents(span);
-            } else {
-                // This is a simplified approach. For production, libraries like Rangy are better.
-                // We'll wrap the selected fragment. This might create nested spans if not careful.
-                const fragment = range.extractContents();
-                span.appendChild(fragment);
-                range.insertNode(span);
-            }
-            selection.removeAllRanges();
-
-            if (!pagesData[currentPageId].annotations) {
-                pagesData[currentPageId].annotations = [];
-            }
-            pagesData[currentPageId].annotations.push(newAnnotation);
-            console.log(`Annotation created:`, newAnnotation);
-            // After highlighting, the DOM changed, so paths might need re-evaluation if we were to immediately use them.
-            // But for now, we store them based on the state *before* wrapping.
-            // Re-rendering annotations will use these stored paths.
-        } catch (e) {
-            console.error("Error surrounding contents:", e);
-            // Restore selection if highlighting failed
-            selection.removeAllRanges();
-            selection.addRange(range);
-        }
+        createAnnotationFromCurrentSelection(currentHighlightColor);
     });
 
     function handleAnnotationClick(event) {
@@ -325,29 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedAnnotation = null;
         console.log(`Annotation ${annotationId} deleted`);
         closeModal(annotationPopup);
-    });
-
-
-    // --- Comment Modal Actions ---
-    saveCommentBtn.addEventListener('click', () => {
-        if (!selectedAnnotation || !currentPageId) { // selectedAnnotation is the SPAN element
-             // We need to get the actual selectedAnnotation *span* if comment modal was opened.
-             // This requires a bit of state management. Let's assume selectedAnnotation is still set
-             // from when addCommentBtn was clicked. This is okay because comment modal is modal.
-            console.error("No annotation selected for saving comment.");
-            closeModal(commentModal);
-            return;
-        }
-        const annotationId = selectedAnnotation.dataset.annotationId;
-        const annotation = pagesData[currentPageId].annotations.find(a => a.id === annotationId);
-        if (annotation) {
-            annotation.comment = commentInput.value;
-            console.log(`Comment saved for annotation ${annotationId}: "${annotation.comment}"`);
-            // Optionally, display the comment somewhere or indicate that a comment exists
-            selectedAnnotation.title = annotation.comment; // Show comment on hover
-        }
-        closeModal(commentModal);
-        commentInput.value = ''; // Clear textarea
     });
 
 
