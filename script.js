@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     let currentPageId = null;
     let quill = null;
+    const artyom = new Artyom();
 
     // --- State Management ---
     function saveState() {
@@ -37,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.error("Could not load state", e); }
     }
 
-    // --- Page Loading and Rendering ---
+    // --- Page Management ---
     function renderPageList() {
         pageList.innerHTML = '';
         if (Object.keys(pagesData).length === 0) {
@@ -50,9 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const titleSpan = document.createElement('span');
             titleSpan.textContent = page.title;
             titleSpan.className = 'page-title';
-
             titleSpan.addEventListener('dblclick', () => handleRename(pageId, titleSpan));
-
             li.appendChild(titleSpan);
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = '×';
@@ -60,13 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteBtn.dataset.pageId = pageId;
             li.appendChild(deleteBtn);
             li.dataset.pageId = pageId;
-
             li.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete-page-btn')) {
-                    handleDeletePage(e);
-                } else if (!e.target.classList.contains('rename-input')) {
-                    loadPage(pageId);
-                }
+                if (e.target.classList.contains('delete-page-btn')) handleDeletePage(e);
+                else if (!e.target.classList.contains('rename-input')) loadPage(pageId);
             });
             pageList.appendChild(li);
         }
@@ -78,11 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
         input.type = 'text';
         input.value = currentTitle;
         input.className = 'rename-input';
-
         titleSpan.replaceWith(input);
         input.focus();
         input.select();
-
         const saveRename = () => {
             const newTitle = input.value.trim();
             if (newTitle && newTitle !== currentTitle) {
@@ -91,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             renderPageList();
         };
-
         input.addEventListener('blur', saveRename);
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') saveRename();
@@ -125,9 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!pagesData[pageId] || !quill) return;
         currentPageId = pageId;
         quill.setContents(pagesData[pageId].content);
-        Array.from(pageList.children).forEach(li => {
-            li.classList.toggle('active', li.dataset.pageId === pageId);
-        });
+        Array.from(pageList.children).forEach(li => li.classList.toggle('active', li.dataset.pageId === pageId));
     }
 
     // --- URL Fetching ---
@@ -160,58 +150,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Text-to-Speech ---
     function handlePlay() {
-        console.log("handlePlay called");
-        console.log("SpeechSynthesis status:", {
-            speaking: speechSynthesis.speaking,
-            paused: speechSynthesis.paused,
-            pending: speechSynthesis.pending,
-        });
-        const voices = speechSynthesis.getVoices();
-        if (voices.length === 0) {
-            console.error("No speech synthesis voices available.");
-            alert("No text-to-speech voices were found. Please check your OS settings.");
+        if (artyom.isSpeaking()) {
+            // This is a limitation of the library wrapper, it doesn't expose underlying pause/resume
+            // So we just restart from the same spot.
+            handleStop();
+            // A small timeout to let the cancel take effect
+            setTimeout(startSpeech, 100);
+        } else {
+            startSpeech();
+        }
+    }
+
+    function startSpeech() {
+        const range = quill.getSelection();
+        let textToSpeak;
+        if (range && range.length > 0) {
+            textToSpeak = quill.getText(range.index, range.length);
+        } else {
+            const startIndex = range ? range.index : 0;
+            textToSpeak = quill.getText(startIndex);
+        }
+
+        if (!textToSpeak.trim()) {
+            alert("No text to speak from the current position.");
             return;
         }
-        console.log("Available voices:", voices.map(v => v.name));
-        if (speechSynthesis.speaking && speechSynthesis.paused) {
-            console.log("Resuming speech...");
-            speechSynthesis.resume();
-        } else {
-            console.log("Starting new speech...");
-            const text = quill.getText();
-            if (!text.trim()) {
-                console.warn("No text to speak.");
-                alert("There is no text in the editor to play.");
-                return;
-            }
-            console.log("Text to speak (first 100 chars):", text.substring(0, 100) + "...");
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onstart = () => console.log("Speech started.");
-            utterance.onpause = () => console.log("Speech paused.");
-            utterance.onresume = () => console.log("Speech resumed.");
-            utterance.onerror = (event) => console.error("SpeechSynthesis Error", event);
-            utterance.onend = () => {
-                console.log("Speech finished.");
+
+        artyom.say(textToSpeak, {
+            onStart: () => {
+                playBtn.style.display = 'none';
+                pauseBtn.style.display = 'inline-block';
+            },
+            onEnd: () => {
                 playBtn.style.display = 'inline-block';
                 pauseBtn.style.display = 'none';
-            };
-            speechSynthesis.cancel();
-            speechSynthesis.speak(utterance);
-        }
-        playBtn.style.display = 'none';
-        pauseBtn.style.display = 'inline-block';
+            }
+        });
     }
 
     function handlePause() {
-        console.log("handlePause called");
-        speechSynthesis.pause();
+        // Artyom's pause is for recognition, not synthesis. We use shutUp to stop it.
+        artyom.shutUp();
         playBtn.style.display = 'inline-block';
         pauseBtn.style.display = 'none';
     }
 
     function handleStop() {
-        console.log("handleStop called");
-        speechSynthesis.cancel();
+        artyom.shutUp();
         playBtn.style.display = 'inline-block';
         pauseBtn.style.display = 'none';
     }
@@ -219,26 +204,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
     function initialize() {
         loadState();
+        artyom.initialize({ lang: "en-GB", continuous: false, debug: true, listen: false })
+            .then(() => console.log("Artyom has been successfully initialized."))
+            .catch((err) => console.error("Artyom could not be initialized:", err));
+
         const toolbarOptions = [
-            [{ 'header': [1, 2, false] }],
-            ['bold', 'italic', 'underline'],
+            [{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
             [{ 'background': ['rgba(255, 255, 0, 0.5)', 'rgba(255, 192, 203, 0.5)', 'rgba(173, 216, 230, 0.5)', false] }],
             ['clean']
         ];
-        quill = new Quill('#editor', {
-            theme: 'snow',
-            modules: { toolbar: toolbarOptions }
+        quill = new Quill('#editor', { theme: 'snow', modules: { toolbar: toolbarOptions } });
+
+        quill.on('text-change', () => {
+            clearTimeout(window.saveTimeout);
+            window.saveTimeout = setTimeout(() => saveState(), 500);
         });
 
-        quill.on('text-change', (delta, oldDelta, source) => {
-            if (source === 'user') {
-                clearTimeout(window.saveTimeout);
-                window.saveTimeout = setTimeout(() => saveState(), 500);
-            }
-        });
-
-        if(fetchBtn) fetchBtn.addEventListener('click', fetchAndDisplayArticle);
+        fetchBtn.addEventListener('click', fetchAndDisplayArticle);
         playBtn.addEventListener('click', handlePlay);
         pauseBtn.addEventListener('click', handlePause);
         stopBtn.addEventListener('click', handleStop);
@@ -246,11 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderPageList();
         const firstPageId = Object.keys(pagesData)[0];
-        if (firstPageId) {
-            loadPage(firstPageId);
-        } else {
-            quill.setText('No content.');
-        }
+        if (firstPageId) loadPage(firstPageId);
+        else quill.setText('No content.');
     }
 
     initialize();
