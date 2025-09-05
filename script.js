@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageList = document.getElementById('page-list');
     const textContentDiv = document.getElementById('text-content');
     const editBtn = document.getElementById('edit-btn');
+    const urlInput = document.getElementById('url-input');
+    const fetchBtn = document.getElementById('fetch-btn');
     const colorPaletteToolbar = document.querySelector('.toolbar'); // Get the toolbar
     const colorBtns = document.querySelectorAll('.color-btn');
 
@@ -488,6 +490,75 @@ document.addEventListener('DOMContentLoaded', () => {
             closeModal(commentModal);
         }
     };
+
+    // --- URL Fetching ---
+    async function fetchAndDisplayArticle() {
+        const url = urlInput.value.trim();
+        if (!url) {
+            alert('Please enter a URL.');
+            return;
+        }
+
+        // Simple validation for URL format
+        try {
+            new URL(url);
+        } catch (_) {
+            alert('Please enter a valid URL.');
+            return;
+        }
+
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+
+        // Give user feedback that something is happening
+        fetchBtn.textContent = 'Fetching...';
+        fetchBtn.disabled = true;
+
+        try {
+            const response = await fetch(proxyUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const html = await response.text();
+
+            // Note: Readability modifies the DOM it's given.
+            // To avoid messing up the current page's DOM, we parse the fetched HTML
+            // into a new document.
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+
+            // We also need to set the document's URL for Readability to resolve relative links correctly.
+            // Although we don't display images/links from the article, it's good practice.
+            doc.baseURI = url;
+
+            const reader = new Readability(doc);
+            const article = reader.parse();
+
+            if (article && article.content) {
+                const newPageId = `page-${Date.now()}`;
+                pagesData[newPageId] = {
+                    title: article.title || 'Untitled Article',
+                    content: article.content,
+                    annotations: []
+                };
+                renderPageList();
+                loadPage(newPageId);
+                urlInput.value = ''; // Clear input
+            } else {
+                alert('Could not extract article content. Please try another URL.');
+            }
+        } catch (error) {
+            console.error('Error fetching or parsing article:', error);
+            alert('Failed to fetch or parse the article. See console for details.');
+        } finally {
+            // Restore button state
+            fetchBtn.textContent = 'Fetch & Annotate';
+            fetchBtn.disabled = false;
+        }
+    }
+
+    if(fetchBtn) {
+        fetchBtn.addEventListener('click', fetchAndDisplayArticle);
+    }
+
 
     // --- Initial Setup ---
     renderPageList();
