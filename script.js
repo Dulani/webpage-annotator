@@ -3,32 +3,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageList = document.getElementById('page-list');
     const urlInput = document.getElementById('url-input');
     const fetchBtn = document.getElementById('fetch-btn');
-    const commentSidebar = document.querySelector('.comment-sidebar');
-    const commentInput = document.getElementById('comment-input');
-    const saveCommentBtn = document.getElementById('save-comment-btn');
-    const cancelCommentBtn = document.getElementById('cancel-comment-btn');
 
     // App State
     let pagesData = {
         "page1": {
             title: "Sample Page 1",
-            content: { ops: [{ insert: 'Welcome! You can edit this text, use the toolbar to format it, highlight sections by changing their background color, and then click on a highlight to add a comment.\n' }] },
+            content: { ops: [{ insert: 'Welcome! You can edit this text and use the toolbar to format it, including highlighting sections by changing their background color.\n' }] },
+            // Annotations are disabled for now.
             annotations: []
         },
     };
     let currentPageId = null;
     let quill = null;
-    let activeAnnotationId = null;
-
-    // --- Quill Customization ---
-    // This is the fix for the constructor error. We get the Parchment library,
-    // get a reference to the Attribute class, and then instantiate our custom attributor.
-    const Parchment = Quill.import('parchment');
-    const Attribute = Parchment.Attributor.Attribute;
-    const AnnotationIdAttributor = new Attribute('annotationId', 'data-annotation-id', {
-        scope: Parchment.Scope.INLINE
-    });
-    Quill.register(AnnotationIdAttributor);
 
     // --- State Management ---
     function saveState() {
@@ -61,41 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadPage(pageId) {
         if (!pagesData[pageId] || !quill) return;
         currentPageId = pageId;
-        quill.off('selection-change', selectionChangeHandler);
         quill.setContents(pagesData[pageId].content);
-        quill.on('selection-change', selectionChangeHandler);
-
         Array.from(pageList.children).forEach(li => {
             li.classList.toggle('active', li.dataset.pageId === pageId);
         });
-        closeCommentSidebar();
-    }
-
-    // --- Commenting UI ---
-    function showCommentSidebar(annotationId) {
-        activeAnnotationId = annotationId;
-        const annotation = pagesData[currentPageId].annotations.find(a => a.id === annotationId);
-        if (annotation) {
-            commentInput.value = annotation.comment;
-            commentSidebar.style.display = 'block';
-            commentInput.focus();
-        }
-    }
-
-    function closeCommentSidebar() {
-        commentSidebar.style.display = 'none';
-        activeAnnotationId = null;
-        commentInput.value = '';
-    }
-
-    function saveComment() {
-        if (!activeAnnotationId) return;
-        const annotation = pagesData[currentPageId].annotations.find(a => a.id === activeAnnotationId);
-        if (annotation) {
-            annotation.comment = commentInput.value;
-            saveState();
-        }
-        closeCommentSidebar();
     }
 
     // --- URL Fetching ---
@@ -126,29 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Event Handlers ---
-    const selectionChangeHandler = (range, oldRange, source) => {
-        if (source === 'user' && range && range.length === 0) {
-            const formats = quill.getFormat(range.index);
-            if (formats.background) {
-                if (formats.annotationId) {
-                    showCommentSidebar(formats.annotationId);
-                } else {
-                    const newId = `anno-${Date.now()}`;
-                    const [leaf, offset] = quill.getLeaf(range.index);
-                    const blotRange = { index: range.index - offset, length: leaf.length() };
-                    quill.formatText(blotRange.index, blotRange.length, 'annotationId', newId, 'silent');
-                    if (!pagesData[currentPageId].annotations) pagesData[currentPageId].annotations = [];
-                    pagesData[currentPageId].annotations.push({ id: newId, comment: '' });
-                    saveState();
-                    showCommentSidebar(newId);
-                }
-            } else {
-                closeCommentSidebar();
-            }
-        }
-    };
-
     // --- Initial Setup ---
     function initialize() {
         loadState();
@@ -156,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             [{ 'header': [1, 2, false] }],
             ['bold', 'italic', 'underline'],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            // Use the standard background color picker for highlighting
             [{ 'background': ['rgba(255, 255, 0, 0.5)', 'rgba(255, 192, 203, 0.5)', 'rgba(173, 216, 230, 0.5)', false] }],
             ['clean']
         ];
@@ -164,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
             modules: { toolbar: toolbarOptions }
         });
 
+        // Autosave on text change
         quill.on('text-change', (delta, oldDelta, source) => {
             if (source === 'user') {
                 clearTimeout(window.saveTimeout);
@@ -171,15 +105,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        quill.on('selection-change', selectionChangeHandler);
-
         if(fetchBtn) fetchBtn.addEventListener('click', fetchAndDisplayArticle);
-        saveCommentBtn.addEventListener('click', saveComment);
-        cancelCommentBtn.addEventListener('click', closeCommentSidebar);
 
         renderPageList();
         const firstPageId = Object.keys(pagesData)[0];
-        if (firstPageId) loadPage(firstPageId); else quill.setText('No content.');
+        if (firstPageId) {
+            loadPage(firstPageId);
+        } else {
+            quill.setText('No content.');
+        }
     }
 
     initialize();
