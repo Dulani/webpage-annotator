@@ -80,8 +80,33 @@ header h1 {
     min-height: calc(100vh - 150px);
 }
 
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
 .sidebar h2 {
-    margin-top: 0;
+    margin: 0;
+}
+
+#new-page-btn {
+    background-color: #5cb85c;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 1.4em;
+    line-height: 28px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+#new-page-btn:hover {
+    background-color: #4cae4c;
 }
 
 #page-list {
@@ -100,6 +125,16 @@ header h1 {
 
 .page-title {
     flex-grow: 1;
+    padding: 0.2rem 0;
+}
+
+.rename-input {
+    flex-grow: 1;
+    font-family: inherit;
+    font-size: inherit;
+    padding: 0.2rem;
+    border: 1px solid #007bff;
+    outline: none;
 }
 
 .delete-page-btn {
