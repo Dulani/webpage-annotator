@@ -4,14 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Text Annotation Demo</title>
+    <!-- Include Quill stylesheet -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Text Annotation Tool</h1>
-            <button id="edit-btn">Edit Text</button>
+            <h1>Text Annotation Tool (v 0.1.12)</h1>
         </header>
+
+        <div class="url-fetch-container">
+            <input type="text" id="url-input" placeholder="Enter URL to fetch text...">
+            <button id="fetch-btn">Fetch & Annotate</button>
+        </div>
 
         <div class="sidebar">
             <h2>Sample Pages</h2>
@@ -21,42 +27,30 @@
         </div>
 
         <main>
-            <section id="intro-section">
-                <p>Welcome to the Text Annotation Tool! You can select text within the content area below to highlight it. Once text is selected, a color palette will appear, allowing you to choose a highlight color. Click on existing highlights to add comments or change their color.</p>
-                <p>On mobile devices, you can select text by long-pressing and dragging your finger.</p>
-            </section>
-            <div class="toolbar">
-                <h3>Highlight Colors</h3>
-                <button class="color-btn" data-color="yellow">Yellow</button>
-                <button class="color-btn" data-color="pink">Pink</button>
-                <button class="color-btn" data-color="lightblue">Blue</button>
-            </div>
-            <div id="text-content" contenteditable="false">
-                <!-- Text content will be loaded here -->
-                <p>Select a page from the sidebar to view its content.</p>
+            <!-- Create the container for the editor -->
+            <div id="editor-container">
+                <div id="toolbar-container">
+                    <!-- The toolbar will be programmatically added by Quill -->
+                </div>
+                <div id="editor"></div>
             </div>
         </main>
 
-        <div id="annotation-popup" class="modal" style="display:none;">
-            <div class="modal-content">
-                <span class="close-btn">&times;</span>
-                <h4>Annotation Options</h4>
-                <button id="change-color-btn">Change Color</button>
-                <button id="add-comment-btn">Add Comment</button>
-                <button id="delete-annotation-btn">Delete</button>
-            </div>
-        </div>
-
-        <div id="comment-modal" class="modal" style="display:none;">
-            <div class="modal-content">
-                <span class="close-comment-modal-btn">&times;</span>
-                <h4>Add Comment</h4>
-                <textarea id="comment-input" placeholder="Enter your comment..."></textarea>
-                <button id="save-comment-btn">Save Comment</button>
-            </div>
+        <!-- A new sidebar for comments -->
+        <div class="comment-sidebar" style="display: none;">
+             <h4>Comments</h4>
+             <div id="comment-list"></div>
+             <div class="comment-input-container">
+                <textarea id="comment-input" placeholder="Add a comment..."></textarea>
+                <button id="save-comment-btn">Save</button>
+                <button id="cancel-comment-btn">Cancel</button>
+             </div>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/readability/0.5.0/Readability.min.js" integrity="sha512-XZ0uNdz5h40R7SJavnsSp/TnGvu6WY+U8Q75gZx6orlKCIzutPOd4g+m/zcq7HA1XL8bAQtYLs1zhoCDb4L9sA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Include the Quill library -->
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

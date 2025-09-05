@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 body {
     font-family: sans-serif;
     margin: 0;
@@ -8,7 +14,7 @@ body {
 .container {
     display: flex;
     flex-wrap: wrap;
-    max-width: 1200px;
+    max-width: 1400px; /* Widen container for comment sidebar */
     margin: 20px auto;
     background-color: #fff;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -30,24 +36,48 @@ header h1 {
     font-size: 1.8em;
 }
 
-#edit-btn {
+.url-fetch-container {
+    width: 100%;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#url-input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+#fetch-btn {
     padding: 0.5rem 1rem;
-    background-color: #5cb85c;
+    background-color: #007bff;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    transition: background-color 0.2s ease;
 }
 
-#edit-btn:hover {
-    background-color: #4cae4c;
+#fetch-btn:hover {
+    background-color: #0056b3;
+}
+
+#fetch-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 }
 
 .sidebar {
     width: 20%;
     padding: 1rem;
     border-right: 1px solid #ddd;
-    min-height: calc(100vh - 100px); /* Adjust based on header height */
+    min-height: calc(100vh - 150px);
 }
 
 .sidebar h2 {
@@ -70,225 +100,85 @@ header h1 {
 }
 
 #page-list li.active {
-    background-color: #d1e7fd; /* A light blue to indicate active page */
+    background-color: #d1e7fd;
     font-weight: bold;
 }
 
 main {
-    width: 75%; /* Adjust as needed */
+    width: 55%; /* Adjust to make space for comment sidebar */
     padding: 1rem;
 }
 
-#intro-section p {
-    margin-bottom: 0.5rem;
-    font-size: 0.95em;
-    color: #555;
-}
-
-.toolbar {
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #eee;
-    display: none; /* Initially hidden */
-}
-
-.toolbar.active {
-    display: block; /* Shown when active */
-}
-
-.toolbar h3 {
-    margin-top: 0;
-    margin-bottom: 0.75rem;
-    font-size: 1.1em;
-    color: #555;
-}
-
-.color-btn {
-    padding: 0.5rem 1rem;
-    margin-right: 0.5rem;
-    border: 2px solid transparent; /* For active state indication */
-    border-radius: 4px;
-    cursor: pointer;
-    transition: border-color 0.2s ease-in-out, transform 0.1s ease;
-}
-
-.color-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.color-btn.active-color { /* This class will be set by JS for the selected color */
-    border-color: #333;
-    box-shadow: 0 0 5px rgba(0,0,0,0.2);
-}
-
-
-.color-btn[data-color="yellow"] { background-color: #fff799; border-color: #e6d96a; }
-.color-btn[data-color="pink"] { background-color: #ffc0cb; border-color: #e6adb7; }
-.color-btn[data-color="lightblue"] { background-color: #add8e6; border-color: #9cc2d1; }
-.color-btn[data-color="yellow"]:hover { background-color: #ffe866; }
-.color-btn[data-color="pink"]:hover { background-color: #ffb3c1; }
-.color-btn[data-color="lightblue"]:hover { background-color: #9ccbe0; }
-
-
-#text-content {
-    border: 1px solid #ddd;
-    padding: 1rem;
-    min-height: 300px;
-    background-color: #fff;
-    line-height: 1.6;
-    -webkit-user-select: text; /* Allow text selection for iOS Safari */
-    user-select: text; /* Standard property for text selection */
-}
-
-#text-content[contenteditable="true"] {
-    outline: 2px solid #5cb85c;
-}
-
-.highlight {
-    cursor: pointer;
-}
-
-.highlight.yellow { background-color: yellow; }
-.highlight.pink { background-color: pink; }
-.highlight.lightblue { background-color: lightblue; }
-
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000; /* Ensure modals are on top */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.5); /* Darker overlay */
-    padding-top: 80px; /* Increased padding */
-    backdrop-filter: blur(3px); /* Optional: blur background */
-}
-
-.modal-content {
-    background-color: #fefefe;
-    margin: 5% auto;
-    padding: 25px; /* Increased padding */
-    border: none; /* Remove border, rely on shadow */
-    width: 90%;
-    max-width: 450px; /* Slightly wider */
-    border-radius: 8px; /* More rounded corners */
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3); /* Softer shadow */
-    text-align: left; /* Align text to left for better readability */
-    position: relative; /* For positioning close button */
-}
-
-.modal-content h4 {
-    margin-top: 0;
-    margin-bottom: 15px; /* More space below title */
-    font-size: 1.4em; /* Larger title */
-    color: #333;
-    text-align: center; /* Center modal title */
-}
-
-.modal-content button {
-    padding: 12px 18px; /* Larger buttons */
-    margin: 8px 5px; /* Adjusted margin */
-    cursor: pointer;
+#editor-container {
     border: 1px solid #ccc;
-    border-radius: 5px; /* Slightly more rounded buttons */
-    font-size: 0.95em;
-    transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.modal-content button:hover {
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+#editor {
+    height: 60vh; /* Good default height */
+    background-color: #fff;
 }
 
-/* Specific button styling in modal */
-#add-comment-btn, #change-color-btn {
-    background-color: #f0f0f0;
-}
-#add-comment-btn:hover, #change-color-btn:hover {
-    background-color: #e0e0e0;
-}
+/* Custom highlight styles for Quill */
+.highlight-yellow { background-color: rgba(255, 255, 0, 0.5); }
+.highlight-pink { background-color: rgba(255, 192, 203, 0.5); }
+.highlight-lightblue { background-color: rgba(173, 216, 230, 0.5); }
 
-
-.close-btn, .close-comment-modal-btn {
-    color: #888; /* Darker close button */
-    position: absolute; /* Position relative to modal-content */
-    top: 10px;
-    right: 15px;
-    font-size: 32px; /* Larger close icon */
-    font-weight: bold;
-    line-height: 1; /* Ensure proper vertical alignment */
-}
-
-.close-btn:hover,
-.close-btn:focus,
-.close-comment-modal-btn:hover,
-.close-comment-modal-btn:focus {
-    color: #333; /* Darker hover for close */
-    text-decoration: none;
+.ql-snow .ql-picker.ql-color .ql-picker-label,
+.ql-snow .ql-picker.ql-background .ql-picker-label {
     cursor: pointer;
+}
+
+.comment-sidebar {
+    width: 25%;
+    padding: 1rem;
+    border-left: 1px solid #ddd;
+    background-color: #f8f9fa;
+}
+
+.comment-sidebar h4 {
+    margin-top: 0;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.5rem;
+}
+
+#comment-list .comment {
+    border-bottom: 1px solid #eee;
+    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+}
+
+.comment-input-container {
+    margin-top: 1rem;
 }
 
 #comment-input {
-    width: calc(100% - 22px);
-    min-height: 100px; /* Taller textarea */
-    margin-bottom: 15px; /* More space below textarea */
-    padding: 10px;
-    border: 1px solid #ddd; /* Softer border */
-    border-radius: 5px;
-    font-size: 1em;
-    line-height: 1.5;
-}
-
-#save-comment-btn {
-    background-color: #5cb85c;
-    color: white;
-    border-color: #5cb85c;
-}
-#save-comment-btn:hover {
-    background-color: #4cae4c;
-    border-color: #4cae4c;
-}
-
-#delete-annotation-btn {
-    background-color: #d9534f;
-    color: white;
-    border-color: #d9534f;
-}
-#delete-annotation-btn:hover {
-    background-color: #c9302c;
-    border-color: #c9302c;
+    width: 100%;
+    min-height: 80px;
+    margin-bottom: 0.5rem;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
 }
 
 /* General responsive touch for smaller screens */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .container {
         flex-direction: column;
         margin: 0;
     }
-    .sidebar {
+    .sidebar, main, .comment-sidebar {
         width: 100%;
         min-height: auto;
-        border-right: none;
+        border: none;
         border-bottom: 1px solid #ddd;
     }
     main {
-        width: 100%;
-        padding: 0.5rem;
+        order: 1; /* Change order on mobile */
     }
-    header {
-        flex-direction: column;
-        padding: 0.5rem;
+    .sidebar {
+        order: 2;
     }
-    header h1 {
-        font-size: 1.5em;
-        margin-bottom: 0.5rem;
-    }
-    .modal-content {
-        width: 95%;
-        margin: 20px auto; /* Adjust margin for smaller screens */
-        padding: 20px;
+    .comment-sidebar {
+        order: 3;
     }
 }
