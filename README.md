@@ -8,19 +8,21 @@ This project is a collection of tools to manage and annotate text, built primari
 
 This list describes the current features of the application. It serves as a set of requirements that should be maintained and respected during future development.
 
+*   **Page Management:**
+    *   Fetched articles appear in a list in the sidebar.
+    *   Users can delete pages from this list.
+
 *   **URL Content Fetching:**
     *   Users can provide a URL to any public webpage.
     *   The application will fetch the page's HTML, extract the main article content (stripping away ads, navigation, etc.), and load it into the editor.
 
 *   **Rich Text Editor:**
     *   The main content area is a rich text editor powered by [Quill.js](https://quilljs.com/).
-    *   Users can perform standard text editing, including formatting (bold, italics), creating lists, and changing colors.
+    *   Users can perform standard text editing, including formatting (bold, italics), creating lists, and highlighting text with different background colors.
 
-*   **Highlighting & Commenting:**
-    *   Users can highlight any piece of text by selecting it and choosing a background color from the toolbar.
-    *   Clicking on an existing highlight opens a sidebar where a user can add or edit a comment associated with that specific highlight.
-    *   The application links highlights to their comments via a unique ID.
+*   **Text-to-Speech:**
+    *   Users can use the "Play", "Pause", and "Stop" controls to have the text in the editor read aloud using the browser's native speech synthesis engine.
 
 *   **Data Persistence:**
-    *   All data, including fetched articles, user edits, highlights, and comments, is automatically saved to the browser's `localStorage`.
+    *   All data, including fetched articles and user edits, is automatically saved to the browser's `localStorage`.
     *   This ensures that all work is preserved between sessions and is not lost when the page is reloaded.
