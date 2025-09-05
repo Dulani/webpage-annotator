@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 body {
     font-family: sans-serif;
     margin: 0;
@@ -28,6 +34,44 @@ header {
 header h1 {
     margin: 0;
     font-size: 1.8em;
+}
+
+.url-fetch-container {
+    width: 100%;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box; /* Ensures padding is included in the width */
+}
+
+#url-input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+#fetch-btn {
+    padding: 0.5rem 1rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#fetch-btn:hover {
+    background-color: #0056b3;
+}
+
+#fetch-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 }
 
 #edit-btn {
@@ -153,32 +197,96 @@ main {
 .highlight.pink { background-color: pink; }
 .highlight.lightblue { background-color: lightblue; }
 
-/* Modal Styles */
-.modal {
+/* --- Popover & Modal Styles --- */
+
+/* Annotation Popover */
+#annotation-popup {
+    display: none; /* Hidden by default */
+    position: absolute; /* Positioned by JS */
+    z-index: 1001;
+    background-color: #333;
+    color: white;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    padding: 5px;
+    /* Add a little triangle/caret at the bottom */
+    --caret-size: 8px;
+}
+
+#annotation-popup::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: var(--caret-size);
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+#annotation-popup.below::after {
+    top: auto;
+    bottom: 100%;
+    border-color: transparent transparent #333 transparent;
+}
+
+
+#annotation-popup .modal-content {
+    /* Reset styles from .modal-content that we don't need */
+    background-color: transparent;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    text-align: center;
+    width: auto;
+    max-width: none;
+    position: static;
+}
+
+#annotation-popup h4, #annotation-popup .close-btn {
+    display: none; /* Hide unnecessary elements */
+}
+
+#annotation-popup button {
+    background: #555;
+    color: white;
+    border: 1px solid #666;
+    padding: 6px 12px;
+    margin: 4px;
+    border-radius: 4px;
+}
+
+#annotation-popup button:hover {
+    background: #666;
+}
+
+
+/* Comment Modal */
+#comment-modal {
     display: none;
     position: fixed;
-    z-index: 1000; /* Ensure modals are on top */
+    z-index: 1000;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0,0,0,0.5); /* Darker overlay */
-    padding-top: 80px; /* Increased padding */
-    backdrop-filter: blur(3px); /* Optional: blur background */
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(3px);
 }
 
 .modal-content {
     background-color: #fefefe;
-    margin: 5% auto;
-    padding: 25px; /* Increased padding */
-    border: none; /* Remove border, rely on shadow */
+    margin: 10% auto; /* Vertically center a bit better */
+    padding: 25px;
+    border: none;
     width: 90%;
-    max-width: 450px; /* Slightly wider */
-    border-radius: 8px; /* More rounded corners */
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3); /* Softer shadow */
-    text-align: left; /* Align text to left for better readability */
-    position: relative; /* For positioning close button */
+    max-width: 450px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    text-align: left;
+    position: relative;
 }
 
 .modal-content h4 {
