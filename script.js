@@ -507,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const proxyUrl = `https://proxy.corsfix.com/?${encodeURIComponent(url)}`;
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
 
         // Give user feedback that something is happening
         fetchBtn.textContent = 'Fetching...';
