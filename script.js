@@ -21,12 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeAnnotationId = null;
 
     // --- Quill Customization ---
-    const Attributor = Quill.import('attributors/attribute/attribute');
-    class AnnotationIdAttributor extends Attributor {}
-    const AnnotationId = new AnnotationIdAttributor('annotationId', 'data-annotation-id', {
-        scope: Quill.import('parchment').Scope.INLINE
+    const Parchment = Quill.import('parchment');
+    const AnnotationIdAttributor = new Parchment.Attributor.Attribute('annotationId', 'data-annotation-id', {
+        scope: Parchment.Scope.INLINE
     });
-    Quill.register(AnnotationId);
+    Quill.register(AnnotationIdAttributor);
 
     // --- State Management ---
     function saveState() {
@@ -152,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 closeCommentSidebar();
             }
-
         }
     };
 
@@ -190,5 +188,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initialize();
-
 });
