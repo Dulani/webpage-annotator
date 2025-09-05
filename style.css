@@ -173,22 +173,47 @@ main {
 }
 
 .speech-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 5px;
     margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #eee;
 }
 
-.speech-controls button {
-    padding: 0.5rem 1rem;
-    margin-right: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+.tts-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2em;
     cursor: pointer;
-    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.speech-controls button:hover {
-    background-color: #e0e0e0;
+.tts-button:hover {
+    background-color: #0056b3;
+}
+
+#tts-progress {
+    flex-grow: 1;
+    height: 10px;
+}
+
+.tts-options {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#tts-voice-select, #tts-rate-slider {
+    cursor: pointer;
 }
 
 #editor-container {
