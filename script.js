@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const playBtn = document.getElementById('play-btn');
     const pauseBtn = document.getElementById('pause-btn');
     const stopBtn = document.getElementById('stop-btn');
+    const newPageBtn = document.getElementById('new-page-btn');
 
     // App State
     let pagesData = {
@@ -19,8 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State Management ---
     function saveState() {
-        if (!quill || !currentPageId) return;
-        if (pagesData[currentPageId]) {
+        if (quill && currentPageId && pagesData[currentPageId]) {
             pagesData[currentPageId].content = quill.getContents();
         }
         try {
@@ -50,6 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const titleSpan = document.createElement('span');
             titleSpan.textContent = page.title;
             titleSpan.className = 'page-title';
+
+            titleSpan.addEventListener('dblclick', () => handleRename(pageId, titleSpan));
+
             li.appendChild(titleSpan);
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = '×';
@@ -57,10 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteBtn.dataset.pageId = pageId;
             li.appendChild(deleteBtn);
             li.dataset.pageId = pageId;
+
             li.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete-page-btn')) {
                     handleDeletePage(e);
-                } else {
+                } else if (!e.target.classList.contains('rename-input')) {
                     loadPage(pageId);
                 }
             });
@@ -68,10 +72,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function handleRename(pageId, titleSpan) {
+        const currentTitle = pagesData[pageId].title;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentTitle;
+        input.className = 'rename-input';
+
+        titleSpan.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const saveRename = () => {
+            const newTitle = input.value.trim();
+            if (newTitle && newTitle !== currentTitle) {
+                pagesData[pageId].title = newTitle;
+                saveState();
+            }
+            renderPageList();
+        };
+
+        input.addEventListener('blur', saveRename);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') saveRename();
+            else if (e.key === 'Escape') renderPageList();
+        });
+    }
+
     function handleDeletePage(event) {
         event.stopPropagation();
         const pageIdToDelete = event.target.dataset.pageId;
-        if (confirm(`Are you sure you want to delete this page?`)) {
+        if (confirm(`Are you sure you want to delete "${pagesData[pageIdToDelete].title}"?`)) {
             delete pagesData[pageIdToDelete];
             saveState();
             renderPageList();
@@ -80,6 +111,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentPageId = null;
             }
         }
+    }
+
+    function handleNewPage() {
+        const newPageId = `page-${Date.now()}`;
+        pagesData[newPageId] = { title: "Untitled Page", content: { ops: [{ insert: '\n' }] } };
+        saveState();
+        renderPageList();
+        loadPage(newPageId);
     }
 
     function loadPage(pageId) {
@@ -121,12 +160,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Text-to-Speech ---
     function handlePlay() {
+        console.log("handlePlay called");
+        console.log("SpeechSynthesis status:", {
+            speaking: speechSynthesis.speaking,
+            paused: speechSynthesis.paused,
+            pending: speechSynthesis.pending,
+        });
+        const voices = speechSynthesis.getVoices();
+        if (voices.length === 0) {
+            console.error("No speech synthesis voices available.");
+            alert("No text-to-speech voices were found. Please check your OS settings.");
+            return;
+        }
+        console.log("Available voices:", voices.map(v => v.name));
         if (speechSynthesis.speaking && speechSynthesis.paused) {
+            console.log("Resuming speech...");
             speechSynthesis.resume();
         } else {
+            console.log("Starting new speech...");
             const text = quill.getText();
+            if (!text.trim()) {
+                console.warn("No text to speak.");
+                alert("There is no text in the editor to play.");
+                return;
+            }
+            console.log("Text to speak (first 100 chars):", text.substring(0, 100) + "...");
             const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onstart = () => console.log("Speech started.");
+            utterance.onpause = () => console.log("Speech paused.");
+            utterance.onresume = () => console.log("Speech resumed.");
+            utterance.onerror = (event) => console.error("SpeechSynthesis Error", event);
             utterance.onend = () => {
+                console.log("Speech finished.");
                 playBtn.style.display = 'inline-block';
                 pauseBtn.style.display = 'none';
             };
@@ -138,12 +203,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handlePause() {
+        console.log("handlePause called");
         speechSynthesis.pause();
         playBtn.style.display = 'inline-block';
         pauseBtn.style.display = 'none';
     }
 
     function handleStop() {
+        console.log("handleStop called");
         speechSynthesis.cancel();
         playBtn.style.display = 'inline-block';
         pauseBtn.style.display = 'none';
@@ -175,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playBtn.addEventListener('click', handlePlay);
         pauseBtn.addEventListener('click', handlePause);
         stopBtn.addEventListener('click', handleStop);
+        newPageBtn.addEventListener('click', handleNewPage);
 
         renderPageList();
         const firstPageId = Object.keys(pagesData)[0];
