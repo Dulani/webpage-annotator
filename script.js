@@ -21,8 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeAnnotationId = null;
 
     // --- Quill Customization ---
+    // This is the fix for the constructor error. We get the Parchment library,
+    // get a reference to the Attribute class, and then instantiate our custom attributor.
     const Parchment = Quill.import('parchment');
-    const AnnotationIdAttributor = new Parchment.Attributor.Attribute('annotationId', 'data-annotation-id', {
+    const Attribute = Parchment.Attributor.Attribute;
+    const AnnotationIdAttributor = new Attribute('annotationId', 'data-annotation-id', {
         scope: Parchment.Scope.INLINE
     });
     Quill.register(AnnotationIdAttributor);
@@ -58,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadPage(pageId) {
         if (!pagesData[pageId] || !quill) return;
         currentPageId = pageId;
-        // Disable the selection-change listener during load to prevent premature triggers
         quill.off('selection-change', selectionChangeHandler);
         quill.setContents(pagesData[pageId].content);
         quill.on('selection-change', selectionChangeHandler);
@@ -126,23 +128,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Handlers ---
     const selectionChangeHandler = (range, oldRange, source) => {
-        if (source === 'user' && range && range.length === 0) { // A click or cursor move
+        if (source === 'user' && range && range.length === 0) {
             const formats = quill.getFormat(range.index);
             if (formats.background) {
                 if (formats.annotationId) {
                     showCommentSidebar(formats.annotationId);
                 } else {
-                    // This is a new highlight. Let's create an annotation for it.
                     const newId = `anno-${Date.now()}`;
-                    // Find the bounds of the entire highlighted section
                     const [leaf, offset] = quill.getLeaf(range.index);
-                    const blotRange = {
-                        index: range.index - offset,
-                        length: leaf.length()
-                    };
-                    // Apply the ID to the whole blot
+                    const blotRange = { index: range.index - offset, length: leaf.length() };
                     quill.formatText(blotRange.index, blotRange.length, 'annotationId', newId, 'silent');
-
                     if (!pagesData[currentPageId].annotations) pagesData[currentPageId].annotations = [];
                     pagesData[currentPageId].annotations.push({ id: newId, comment: '' });
                     saveState();
