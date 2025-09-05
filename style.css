@@ -14,7 +14,7 @@ body {
 .container {
     display: flex;
     flex-wrap: wrap;
-    max-width: 1400px; /* Widen container for comment sidebar */
+    max-width: 1200px;
     margin: 20px auto;
     background-color: #fff;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -74,7 +74,7 @@ header h1 {
 }
 
 .sidebar {
-    width: 20%;
+    width: 25%; /* Give sidebar a bit more space */
     padding: 1rem;
     border-right: 1px solid #ddd;
     min-height: calc(100vh - 150px);
@@ -105,7 +105,7 @@ header h1 {
 }
 
 main {
-    width: 55%; /* Adjust to make space for comment sidebar */
+    width: 75%; /* Fill the rest of the space */
     padding: 1rem;
 }
 
@@ -114,71 +114,20 @@ main {
 }
 
 #editor {
-    height: 60vh; /* Good default height */
+    height: 70vh; /* Taller default height */
     background-color: #fff;
 }
 
-/* Custom highlight styles for Quill */
-.highlight-yellow { background-color: rgba(255, 255, 0, 0.5); }
-.highlight-pink { background-color: rgba(255, 192, 203, 0.5); }
-.highlight-lightblue { background-color: rgba(173, 216, 230, 0.5); }
-
-.ql-snow .ql-picker.ql-color .ql-picker-label,
-.ql-snow .ql-picker.ql-background .ql-picker-label {
-    cursor: pointer;
-}
-
-.comment-sidebar {
-    width: 25%;
-    padding: 1rem;
-    border-left: 1px solid #ddd;
-    background-color: #f8f9fa;
-}
-
-.comment-sidebar h4 {
-    margin-top: 0;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 0.5rem;
-}
-
-#comment-list .comment {
-    border-bottom: 1px solid #eee;
-    padding: 0.5rem 0;
-    margin-bottom: 0.5rem;
-}
-
-.comment-input-container {
-    margin-top: 1rem;
-}
-
-#comment-input {
-    width: 100%;
-    min-height: 80px;
-    margin-bottom: 0.5rem;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
 /* General responsive touch for smaller screens */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
     .container {
         flex-direction: column;
         margin: 0;
     }
-    .sidebar, main, .comment-sidebar {
+    .sidebar, main {
         width: 100%;
         min-height: auto;
         border: none;
         border-bottom: 1px solid #ddd;
-    }
-    main {
-        order: 1; /* Change order on mobile */
-    }
-    .sidebar {
-        order: 2;
-    }
-    .comment-sidebar {
-        order: 3;
     }
 }
