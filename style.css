@@ -137,6 +137,25 @@ main {
     padding: 1rem;
 }
 
+.speech-controls {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.speech-controls button {
+    padding: 0.5rem 1rem;
+    margin-right: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #f0f0f0;
+}
+
+.speech-controls button:hover {
+    background-color: #e0e0e0;
+}
+
 #editor-container {
     border: 1px solid #ccc;
 }

@@ -3,13 +3,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageList = document.getElementById('page-list');
     const urlInput = document.getElementById('url-input');
     const fetchBtn = document.getElementById('fetch-btn');
+    const playBtn = document.getElementById('play-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const stopBtn = document.getElementById('stop-btn');
 
-    // App State - Default data
+    // App State
     let pagesData = {
         "page1": {
             title: "Sample Page 1",
-            content: { ops: [{ insert: 'Welcome! You can edit this text and use the toolbar to format it, including highlighting sections by changing their background color.\n' }] },
-            annotations: []
+            content: { ops: [{ insert: 'Welcome! You can edit this text and use the toolbar to format it, including highlighting sections by changing their background color.\n' }] }
         },
     };
     let currentPageId = null;
@@ -18,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State Management ---
     function saveState() {
         if (!quill || !currentPageId) return;
-        // Only save content if the page still exists
         if (pagesData[currentPageId]) {
             pagesData[currentPageId].content = quill.getContents();
         }
@@ -30,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadState() {
         try {
             const savedData = localStorage.getItem('pagesData');
-            // Ensure that if localStorage is empty, we don't overwrite our default
             if (savedData && Object.keys(JSON.parse(savedData)).length > 0) {
                 pagesData = JSON.parse(savedData);
             }
@@ -47,20 +47,16 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const pageId in pagesData) {
             const page = pagesData[pageId];
             const li = document.createElement('li');
-
             const titleSpan = document.createElement('span');
             titleSpan.textContent = page.title;
             titleSpan.className = 'page-title';
             li.appendChild(titleSpan);
-
             const deleteBtn = document.createElement('button');
             deleteBtn.textContent = '×';
             deleteBtn.className = 'delete-page-btn';
             deleteBtn.dataset.pageId = pageId;
             li.appendChild(deleteBtn);
-
             li.dataset.pageId = pageId;
-            // Use event delegation for clicks to avoid adding listener in a loop
             li.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete-page-btn')) {
                     handleDeletePage(e);
@@ -73,16 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleDeletePage(event) {
-        event.stopPropagation(); // Prevent loadPage from firing
+        event.stopPropagation();
         const pageIdToDelete = event.target.dataset.pageId;
-
         if (confirm(`Are you sure you want to delete this page?`)) {
-            // Remove from data
             delete pagesData[pageIdToDelete];
             saveState();
             renderPageList();
-
-            // If the deleted page was the current one, clear the editor
             if (currentPageId === pageIdToDelete) {
                 quill.setText('Select a page or fetch a new one.');
                 currentPageId = null;
@@ -116,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const tempQuill = new Quill(document.createElement('div'));
                 tempQuill.clipboard.dangerouslyPasteHTML(article.content);
                 const newPageId = `page-${Date.now()}`;
-                pagesData[newPageId] = { title: article.title || 'Untitled Article', content: tempQuill.getContents(), annotations: [] };
+                pagesData[newPageId] = { title: article.title || 'Untitled Article', content: tempQuill.getContents() };
                 renderPageList();
                 loadPage(newPageId);
                 saveState();
@@ -125,6 +117,36 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchBtn.textContent = 'Fetch & Annotate';
             fetchBtn.disabled = false;
         }
+    }
+
+    // --- Text-to-Speech ---
+    function handlePlay() {
+        if (speechSynthesis.speaking && speechSynthesis.paused) {
+            speechSynthesis.resume();
+        } else {
+            const text = quill.getText();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onend = () => {
+                playBtn.style.display = 'inline-block';
+                pauseBtn.style.display = 'none';
+            };
+            speechSynthesis.cancel();
+            speechSynthesis.speak(utterance);
+        }
+        playBtn.style.display = 'none';
+        pauseBtn.style.display = 'inline-block';
+    }
+
+    function handlePause() {
+        speechSynthesis.pause();
+        playBtn.style.display = 'inline-block';
+        pauseBtn.style.display = 'none';
+    }
+
+    function handleStop() {
+        speechSynthesis.cancel();
+        playBtn.style.display = 'inline-block';
+        pauseBtn.style.display = 'none';
     }
 
     // --- Initial Setup ---
@@ -150,6 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if(fetchBtn) fetchBtn.addEventListener('click', fetchAndDisplayArticle);
+        playBtn.addEventListener('click', handlePlay);
+        pauseBtn.addEventListener('click', handlePause);
+        stopBtn.addEventListener('click', handleStop);
 
         renderPageList();
         const firstPageId = Object.keys(pagesData)[0];
