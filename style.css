@@ -30,6 +30,44 @@ header h1 {
     font-size: 1.8em;
 }
 
+.url-fetch-container {
+    width: 100%;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box; /* Ensures padding is included in the width */
+}
+
+#url-input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+#fetch-btn {
+    padding: 0.5rem 1rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#fetch-btn:hover {
+    background-color: #0056b3;
+}
+
+#fetch-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
 #edit-btn {
     padding: 0.5rem 1rem;
     background-color: #5cb85c;
