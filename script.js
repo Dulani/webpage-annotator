@@ -152,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 closeCommentSidebar();
             }
+
         }
     };
 
@@ -189,4 +190,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initialize();
+
 });
