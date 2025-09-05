@@ -4,12 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('url-input');
     const fetchBtn = document.getElementById('fetch-btn');
 
-    // App State
+    // App State - Default data
     let pagesData = {
         "page1": {
             title: "Sample Page 1",
             content: { ops: [{ insert: 'Welcome! You can edit this text and use the toolbar to format it, including highlighting sections by changing their background color.\n' }] },
-            // Annotations are disabled for now.
             annotations: []
         },
     };
@@ -19,7 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State Management ---
     function saveState() {
         if (!quill || !currentPageId) return;
-        pagesData[currentPageId].content = quill.getContents();
+        // Only save content if the page still exists
+        if (pagesData[currentPageId]) {
+            pagesData[currentPageId].content = quill.getContents();
+        }
         try {
             localStorage.setItem('pagesData', JSON.stringify(pagesData));
         } catch (e) { console.error("Could not save state", e); }
@@ -28,19 +30,63 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadState() {
         try {
             const savedData = localStorage.getItem('pagesData');
-            if (savedData) pagesData = JSON.parse(savedData);
+            // Ensure that if localStorage is empty, we don't overwrite our default
+            if (savedData && Object.keys(JSON.parse(savedData)).length > 0) {
+                pagesData = JSON.parse(savedData);
+            }
         } catch (e) { console.error("Could not load state", e); }
     }
 
     // --- Page Loading and Rendering ---
     function renderPageList() {
         pageList.innerHTML = '';
+        if (Object.keys(pagesData).length === 0) {
+            pageList.innerHTML = '<li>No pages available.</li>';
+            return;
+        }
         for (const pageId in pagesData) {
+            const page = pagesData[pageId];
             const li = document.createElement('li');
-            li.textContent = pagesData[pageId].title;
+
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = page.title;
+            titleSpan.className = 'page-title';
+            li.appendChild(titleSpan);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '×';
+            deleteBtn.className = 'delete-page-btn';
+            deleteBtn.dataset.pageId = pageId;
+            li.appendChild(deleteBtn);
+
             li.dataset.pageId = pageId;
-            li.addEventListener('click', () => loadPage(pageId));
+            // Use event delegation for clicks to avoid adding listener in a loop
+            li.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-page-btn')) {
+                    handleDeletePage(e);
+                } else {
+                    loadPage(pageId);
+                }
+            });
             pageList.appendChild(li);
+        }
+    }
+
+    function handleDeletePage(event) {
+        event.stopPropagation(); // Prevent loadPage from firing
+        const pageIdToDelete = event.target.dataset.pageId;
+
+        if (confirm(`Are you sure you want to delete this page?`)) {
+            // Remove from data
+            delete pagesData[pageIdToDelete];
+            saveState();
+            renderPageList();
+
+            // If the deleted page was the current one, clear the editor
+            if (currentPageId === pageIdToDelete) {
+                quill.setText('Select a page or fetch a new one.');
+                currentPageId = null;
+            }
         }
     }
 
@@ -88,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
             [{ 'header': [1, 2, false] }],
             ['bold', 'italic', 'underline'],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            // Use the standard background color picker for highlighting
             [{ 'background': ['rgba(255, 255, 0, 0.5)', 'rgba(255, 192, 203, 0.5)', 'rgba(173, 216, 230, 0.5)', false] }],
             ['clean']
         ];
@@ -97,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
             modules: { toolbar: toolbarOptions }
         });
 
-        // Autosave on text change
         quill.on('text-change', (delta, oldDelta, source) => {
             if (source === 'user') {
                 clearTimeout(window.saveTimeout);
