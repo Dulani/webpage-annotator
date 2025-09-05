@@ -42,6 +42,28 @@ document.addEventListener('DOMContentLoaded', () => {
     let isEditing = false;
     let currentHighlightColor = 'yellow'; // Default highlight color
 
+    // --- State Management ---
+
+    function saveState() {
+        try {
+            localStorage.setItem('pagesData', JSON.stringify(pagesData));
+        } catch (e) {
+            console.error("Could not save state to localStorage", e);
+        }
+    }
+
+    function loadState() {
+        try {
+            const savedData = localStorage.getItem('pagesData');
+            if (savedData) {
+                pagesData = JSON.parse(savedData);
+            }
+        } catch (e) {
+            console.error("Could not load state from localStorage", e);
+            // If loading fails, we'll just use the default data
+        }
+    }
+
     // --- Page Loading and Rendering ---
 
     function renderPageList() {
@@ -212,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pagesData[currentPageId].annotations = [];
             }
             pagesData[currentPageId].annotations.push(newAnnotation);
+            saveState(); // Save state after adding an annotation
             console.log(`Annotation created:`, newAnnotation);
             // After highlighting, the DOM changed, so paths might need re-evaluation if we were to immediately use them.
             // But for now, we store them based on the state *before* wrapping.
@@ -227,8 +250,45 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleAnnotationClick(event) {
         event.stopPropagation(); // Prevent mouseup on textContentDiv from firing
         if (isEditing) return; // Don't open popup if in edit mode
+
+        // If the popup is already open for this annotation, close it.
+        if (selectedAnnotation === event.target && annotationPopup.style.display === 'block') {
+            closeModal(annotationPopup);
+            selectedAnnotation = null;
+            return;
+        }
+
         selectedAnnotation = event.target;
-        openModal(annotationPopup);
+
+        // Position and show the popover
+        const rect = selectedAnnotation.getBoundingClientRect();
+        annotationPopup.style.display = 'block'; // Display it first to get its dimensions
+
+        const popupWidth = annotationPopup.offsetWidth;
+        const popupHeight = annotationPopup.offsetHeight;
+
+        // Position it above the selection, centered.
+        // 10px buffer above the highlight.
+        let top = rect.top + window.scrollY - popupHeight - 10;
+        let left = rect.left + window.scrollX + (rect.width / 2) - (popupWidth / 2);
+
+        // Adjust if it goes off-screen
+        if (top < window.scrollY) { // If it's too high (goes off top of screen)
+            top = rect.bottom + window.scrollY + 10; // Position it below instead
+            // Adjust the caret/triangle direction (optional, requires more CSS)
+            annotationPopup.classList.add('below');
+        } else {
+            annotationPopup.classList.remove('below');
+        }
+        if (left < 0) {
+            left = 5; // Add some padding from the edge
+        }
+        if (left + popupWidth > window.innerWidth) {
+            left = window.innerWidth - popupWidth - 5;
+        }
+
+        annotationPopup.style.top = `${top}px`;
+        annotationPopup.style.left = `${left}px`;
     }
 
     // --- Edit Button Functionality ---
@@ -263,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // For this demo, we'll attempt to re-render. If paths are invalid, those annotations won't show.
             // A truly robust system needs to update annotation ranges upon text edit.
             renderAnnotations(currentPageId);
+            saveState(); // Save state after saving text edits
             console.log("Text saved. Annotations re-rendered (best effort).");
         } else if (isEditing) {
             // Optionally, indicate that annotations cannot be interacted with during editing.
@@ -291,6 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedAnnotation.classList.remove(annotation.color); // Remove old color class
             selectedAnnotation.classList.add(newColor); // Add new color class
             annotation.color = newColor;
+            saveState(); // Save state after changing color
             console.log(`Annotation ${annotationId} color changed to ${newColor}`);
         }
         closeModal(annotationPopup);
@@ -313,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Remove from data
         pagesData[currentPageId].annotations = pagesData[currentPageId].annotations.filter(a => a.id !== annotationId);
+        saveState(); // Save state after deleting annotation
 
         // Remove from DOM
         const parent = selectedAnnotation.parentNode;
@@ -342,6 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const annotation = pagesData[currentPageId].annotations.find(a => a.id === annotationId);
         if (annotation) {
             annotation.comment = commentInput.value;
+            saveState(); // Save state after saving a comment
             console.log(`Comment saved for annotation ${annotationId}: "${annotation.comment}"`);
             // Optionally, display the comment somewhere or indicate that a comment exists
             selectedAnnotation.title = annotation.comment; // Show comment on hover
@@ -351,28 +415,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    // --- Comment Modal Actions ---
-    saveCommentBtn.addEventListener('click', () => {
-        // selectedAnnotation should still be the span element that was clicked to trigger
-        // the 'add comment' flow.
-        if (!selectedAnnotation || !currentPageId) {
-            console.error("No annotation selected for saving comment (selectedAnnotation is null).");
-            closeModal(commentModal);
-            commentInput.value = '';
-            return;
-        }
-        const annotationId = selectedAnnotation.dataset.annotationId;
-        const annotation = pagesData[currentPageId].annotations.find(a => a.id === annotationId);
-        if (annotation) {
-            annotation.comment = commentInput.value;
-            console.log(`Comment saved for annotation ${annotationId}: "${annotation.comment}"`);
-            selectedAnnotation.title = annotation.comment; // Show comment on hover
-        } else {
-            console.error(`Annotation with ID ${annotationId} not found in page data.`);
-        }
-        closeModal(commentModal);
-        commentInput.value = ''; // Clear textarea
-    });
 
     // --- Annotation Rendering ---
     function renderAnnotations(pageId) {
@@ -482,14 +524,99 @@ document.addEventListener('DOMContentLoaded', () => {
         closeCommentModalBtn.onclick = () => closeModal(commentModal);
     }
 
-    window.onclick = (event) => {
-        if (event.target === annotationPopup) {
-            closeModal(annotationPopup);
+    window.addEventListener('click', (event) => {
+        // Close popover if clicked outside
+        if (annotationPopup.style.display === 'block') {
+            const popupRect = annotationPopup.getBoundingClientRect();
+            if (
+                event.clientX < popupRect.left ||
+                event.clientX > popupRect.right ||
+                event.clientY < popupRect.top ||
+                event.clientY > popupRect.bottom
+            ) {
+                // Check if the click was on a highlight, to avoid closing it immediately
+                if (!event.target.classList.contains('highlight')) {
+                    closeModal(annotationPopup);
+                    selectedAnnotation = null;
+                }
+            }
         }
+
+        // Close comment modal if clicked on the background
         if (event.target === commentModal) {
             closeModal(commentModal);
         }
-    };
+    });
+
+    // --- URL Fetching ---
+    async function fetchAndDisplayArticle() {
+        const url = urlInput.value.trim();
+        if (!url) {
+            alert('Please enter a URL.');
+            return;
+        }
+
+        // Simple validation for URL format
+        try {
+            new URL(url);
+        } catch (_) {
+            alert('Please enter a valid URL.');
+            return;
+        }
+
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+
+        // Give user feedback that something is happening
+        fetchBtn.textContent = 'Fetching...';
+        fetchBtn.disabled = true;
+
+        try {
+            const response = await fetch(proxyUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const html = await response.text();
+
+            // Note: Readability modifies the DOM it's given.
+            // To avoid messing up the current page's DOM, we parse the fetched HTML
+            // into a new document.
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+
+            // We also need to set the document's URL for Readability to resolve relative links correctly.
+            // Although we don't display images/links from the article, it's good practice.
+            doc.baseURI = url;
+
+            const reader = new Readability(doc);
+            const article = reader.parse();
+
+            if (article && article.content) {
+                const newPageId = `page-${Date.now()}`;
+                pagesData[newPageId] = {
+                    title: article.title || 'Untitled Article',
+                    content: article.content,
+                    annotations: []
+                };
+                saveState(); // Save state after fetching a new page
+                renderPageList();
+                loadPage(newPageId);
+                urlInput.value = ''; // Clear input
+            } else {
+                alert('Could not extract article content. Please try another URL.');
+            }
+        } catch (error) {
+            console.error('Error fetching or parsing article:', error);
+            alert('Failed to fetch or parse the article. See console for details.');
+        } finally {
+            // Restore button state
+            fetchBtn.textContent = 'Fetch & Annotate';
+            fetchBtn.disabled = false;
+        }
+    }
+
+    if(fetchBtn) {
+        fetchBtn.addEventListener('click', fetchAndDisplayArticle);
+    }
+
 
     // --- URL Fetching ---
     async function fetchAndDisplayArticle() {
@@ -561,6 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Initial Setup ---
+    loadState();
     renderPageList();
     // Load the first page by default if pages exist
     const firstPageId = Object.keys(pagesData)[0];
