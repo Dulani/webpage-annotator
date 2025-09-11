@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
             quill.setText('No content.');
         }
 
-        const sortable = new Sortable(pageList, {
+        const sortable = new Draggable.Sortable(pageList, {
             draggable: 'li',
             handle: '.page-title'
         });
