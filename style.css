@@ -137,19 +137,20 @@ header h1 {
     outline: none;
 }
 
-.delete-page-btn {
+.delete-page-btn, .color-page-btn {
     background: none;
     border: none;
     color: #aaa;
     cursor: pointer;
     font-size: 1.2em;
-    padding: 0 0.5rem;
+    padding: 0 0.2rem;
     visibility: hidden; /* Hide by default */
     opacity: 0;
     transition: opacity 0.2s ease, color 0.2s ease;
 }
 
-#page-list li:hover .delete-page-btn {
+#page-list li:hover .delete-page-btn,
+#page-list li:hover .color-page-btn {
     visibility: visible; /* Show on hover */
     opacity: 1;
 }
@@ -158,13 +159,17 @@ header h1 {
     color: #d9534f; /* Red on hover */
 }
 
+.color-page-btn:hover {
+    color: #333;
+}
+
 #page-list li:hover {
-    background-color: #e9e9e9;
+    background-color: #e9e9e9 !important; /* Use important to override inline style for hover effect */
 }
 
 #page-list li.active {
-    background-color: #d1e7fd;
     font-weight: bold;
+    box-shadow: inset 4px 0 0 #007bff;
 }
 
 main {
