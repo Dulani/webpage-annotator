@@ -3,10 +3,8 @@ window.onload = () => {
     const pageList = document.getElementById('page-list');
     const urlInput = document.getElementById('url-input');
     const fetchBtn = document.getElementById('fetch-btn');
-    const playBtn = document.getElementById('play-btn');
-    const pauseBtn = document.getElementById('pause-btn');
-    const stopBtn = document.getElementById('stop-btn');
     const newPageBtn = document.getElementById('new-page-btn');
+\
     const authorizeButton = document.getElementById('authorize_button');
     const signoutButton = document.getElementById('signout_button');
     const exportButton = document.getElementById('export_button');
@@ -190,7 +188,6 @@ window.onload = () => {
         }
     }
 
-
     // --- State Management ---
     function saveState() {
         if (quill && currentPageId && pagesData[currentPageId]) {
@@ -200,6 +197,7 @@ window.onload = () => {
             localStorage.setItem('pagesData', JSON.stringify(pagesData));
             localStorage.setItem('pageOrder', JSON.stringify(pageOrder));
         } catch (e) { console.error("Could not save state", e); }
+
     }
 
     function loadState() {
@@ -238,7 +236,6 @@ window.onload = () => {
                     page.color = pageColors[0];
                 }
             });
-
         } catch (e) { console.error("Could not load state", e); }
     }
 
@@ -255,11 +252,12 @@ window.onload = () => {
         }
         pageOrder.forEach(pageId => {
             const page = pagesData[pageId];
+
             const li = document.createElement('li');
             li.style.backgroundColor = page.color;
 
             const titleSpan = document.createElement('span');
-            titleSpan.textContent = page.title;
+            titleSpan.textContent = pagesData[pageId].title;
             titleSpan.className = 'page-title';
             titleSpan.addEventListener('dblclick', () => handleRename(pageId, titleSpan));
             li.appendChild(titleSpan);
@@ -335,6 +333,7 @@ window.onload = () => {
         event.stopPropagation();
         const pageIdToDelete = event.target.dataset.pageId;
         if (confirm(`Are you sure you want to delete "${pagesData[pageIdToDelete].title}"?`)) {
+            speechSynthesis.cancel();
             delete pagesData[pageIdToDelete];
             pageOrder = pageOrder.filter(id => id !== pageIdToDelete);
 
@@ -363,7 +362,7 @@ window.onload = () => {
 
     function loadPage(pageId) {
         if (!pagesData[pageId] || !quill) return;
-        saveState();
+        speechSynthesis.cancel();
         currentPageId = pageId;
         quill.setContents(pagesData[pageId].content);
         Array.from(pageList.children).forEach(li => {
@@ -403,6 +402,7 @@ window.onload = () => {
     }
 
     // --- Text-to-Speech ---
+
     function handlePlay() {
         if (artyom.isSpeaking()) {
             handleStop();
@@ -410,45 +410,55 @@ window.onload = () => {
         } else {
             startSpeech();
         }
+
     }
 
-    function startSpeech() {
-        const range = quill.getSelection();
-        let textToSpeak;
-        if (range && range.length > 0) {
-            textToSpeak = quill.getText(range.index, range.length);
+    function handlePlayPause() {
+        if (speechSynthesis.speaking && !speechSynthesis.paused) {
+            speechSynthesis.pause();
+        } else if (speechSynthesis.paused) {
+            speechSynthesis.resume();
         } else {
-            const startIndex = range ? range.index : 0;
-            textToSpeak = quill.getText(startIndex);
-        }
+            const range = quill.getSelection();
+            let textToSpeak = range && range.length > 0 ? quill.getText(range.index, range.length) : quill.getText(range ? range.index : 0);
+            if (!textToSpeak.trim()) return alert("No text to speak.");
 
-        if (!textToSpeak.trim()) {
-            alert("No text to speak from the current position.");
-            return;
-        }
+            speechSynthesis.cancel(); // Clear any previous utterance
 
-        artyom.say(textToSpeak, {
-            onStart: () => {
-                playBtn.style.display = 'none';
-                pauseBtn.style.display = 'inline-block';
-            },
-            onEnd: () => {
-                playBtn.style.display = 'inline-block';
-                pauseBtn.style.display = 'none';
-            }
-        });
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            const selectedVoiceName = voiceSelect.selectedOptions[0].getAttribute('data-name');
+            utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
+            utterance.rate = rateSlider.value;
+
+            utterance.onboundary = (event) => {
+                progress.value = (event.charIndex / textToSpeak.length) * 100;
+            };
+            utterance.onend = () => {
+                progress.value = 0;
+                playPauseBtn.textContent = '▶';
+            };
+
+            speechSynthesis.speak(utterance);
+        }
     }
 
     function handlePause() {
         artyom.shutUp();
         playBtn.style.display = 'inline-block';
         pauseBtn.style.display = 'none';
+
     }
 
-    function handleStop() {
-        artyom.shutUp();
-        playBtn.style.display = 'inline-block';
-        pauseBtn.style.display = 'none';
+    function updateTTS_UI() {
+        if (!speechSynthesis) return;
+        if (speechSynthesis.paused) {
+             playPauseBtn.textContent = '▶';
+        } else if (speechSynthesis.speaking) {
+             playPauseBtn.textContent = '❚❚';
+        } else {
+             playPauseBtn.textContent = '▶';
+             progress.value = 0;
+        }
     }
 
     // --- Initial Setup ---
@@ -474,16 +484,16 @@ window.onload = () => {
         ];
         quill = new Quill('#editor', { theme: 'snow', modules: { toolbar: toolbarOptions } });
 
+
+        // Other event listeners
         quill.on('text-change', () => {
             clearTimeout(window.saveTimeout);
             window.saveTimeout = setTimeout(() => saveState(), 500);
         });
 
         // Add event listeners
+
         fetchBtn.addEventListener('click', fetchAndDisplayArticle);
-        playBtn.addEventListener('click', handlePlay);
-        pauseBtn.addEventListener('click', handlePause);
-        stopBtn.addEventListener('click', handleStop);
         newPageBtn.addEventListener('click', handleNewPage);
         authorizeButton.addEventListener('click', handleAuthClick);
         signoutButton.addEventListener('click', handleSignoutClick);
