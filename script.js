@@ -27,6 +27,72 @@ window.onload = () => {
     let gapiInited = false;
     let gisInited = false;
 
+    // --- Helper Functions ---
+    function parseRgba(rgba) {
+        const result = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (!result) return null;
+        return {
+            red: parseInt(result[1], 10) / 255,
+            green: parseInt(result[2], 10) / 255,
+            blue: parseInt(result[3], 10) / 255,
+        };
+    }
+
+    function convertQuillToDocsRequests(delta) {
+        const requests = [];
+        let currentIndex = 1;
+
+        delta.ops.forEach(op => {
+            if (typeof op.insert !== 'string') return;
+
+            const text = op.insert;
+            const textLength = text.length;
+
+            // 1. Insert the text
+            requests.push({
+                insertText: {
+                    location: { index: currentIndex },
+                    text: text,
+                },
+            });
+
+            // 2. Apply formatting if any
+            if (op.attributes) {
+                const textStyle = {};
+                let fields = [];
+
+                if (op.attributes.bold) { textStyle.bold = true; fields.push('bold'); }
+                if (op.attributes.italic) { textStyle.italic = true; fields.push('italic'); }
+                if (op.attributes.underline) { textStyle.underline = true; fields.push('underline'); }
+
+                if (op.attributes.background) {
+                    const rgbColor = parseRgba(op.attributes.background);
+                    if (rgbColor) {
+                        textStyle.backgroundColor = { color: { rgbColor } };
+                        fields.push('backgroundColor');
+                    }
+                }
+
+                if (fields.length > 0) {
+                    requests.push({
+                        updateTextStyle: {
+                            range: {
+                                startIndex: currentIndex,
+                                endIndex: currentIndex + textLength,
+                            },
+                            textStyle: textStyle,
+                            fields: fields.join(','),
+                        },
+                    });
+                }
+            }
+
+            currentIndex += textLength;
+        });
+
+        return requests;
+    }
+
     // --- Google API Functions ---
     function gapiInit() {
         gapi.client.init({
@@ -91,7 +157,7 @@ window.onload = () => {
 
         const page = pagesData[currentPageId];
         const pageTitle = page.title;
-        const pageContent = quill.getText(); // Plain text for now
+        const delta = quill.getContents();
 
         try {
             exportButton.textContent = 'Exporting...';
@@ -102,16 +168,12 @@ window.onload = () => {
             });
 
             const docId = doc.result.documentId;
+            const requests = convertQuillToDocsRequests(delta);
 
-            if (pageContent.trim().length > 0) {
+            if (requests.length > 0) {
                 await gapi.client.docs.documents.batchUpdate({
                     documentId: docId,
-                    requests: [{
-                        insertText: {
-                            location: { index: 1 },
-                            text: pageContent,
-                        },
-                    }],
+                    requests: requests,
                 });
             }
 
