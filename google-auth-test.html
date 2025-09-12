@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Google Auth Test</title>
+</head>
+<body>
+    <h1>Google Authentication Test Page</h1>
+    <p>This page is for testing Google Sign-In and Google Docs API integration.</p>
+
+    <button id="authorize_button">Authorize and Sign In</button>
+    <button id="signout_button" style="display: none;">Sign Out</button>
+
+    <hr>
+    <button id="create_doc_button" style="display: none;">Create Test Doc</button>
+    <hr>
+
+    <h2>Authentication Status</h2>
+    <pre id="status">Not authenticated.</pre>
+
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="google-auth.js"></script>
+</body>
+</html>

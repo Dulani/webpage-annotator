@@ -12,7 +12,14 @@
 <body>
     <div class="container">
         <header>
-            <h1>Text Annotation Tool (v 0.1.20)</h1>
+            <h1>Text Annotation Tool (v 0.1.21)</h1>
+            <div class="header-controls">
+                <button id="export_button" style="display: none;">Export to Google Docs</button>
+                <div id="auth-container">
+                    <button id="authorize_button">Sign In with Google</button>
+                    <button id="signout_button" style="display: none;">Sign Out</button>
+                </div>
+            </div>
         </header>
 
         <div class="url-fetch-container">
@@ -54,6 +61,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/readability/0.5.0/Readability.min.js" integrity="sha512-XZ0uNdz5h40R7SJavnsSp/TnGvu6WY+U8Q75gZx6orlKCIzutPOd4g+m/zcq7HA1XL8bAQtYLs1zhoCDb4L9sA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <!-- Include the Quill library -->
     <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+    <!-- Include the Draggable library -->
+    <script src="https://cdn.jsdelivr.net/npm/@shopify/draggable@1.0.0-beta.11/lib/draggable.bundle.js"></script>
+
+    <!-- Google API Libraries -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
     <script src="script.js"></script>
 </body>
 </html>
