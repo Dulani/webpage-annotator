@@ -3,53 +3,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const pageList = document.getElementById('page-list');
     const urlInput = document.getElementById('url-input');
     const fetchBtn = document.getElementById('fetch-btn');
-    const playBtn = document.getElementById('play-btn');
-    const pauseBtn = document.getElementById('pause-btn');
-    const stopBtn = document.getElementById('stop-btn');
     const newPageBtn = document.getElementById('new-page-btn');
+    // TTS Controls
+    const playPauseBtn = document.getElementById('tts-play-pause-btn');
+    const progress = document.getElementById('tts-progress');
+    const voiceSelect = document.getElementById('tts-voice-select');
+    const rateSlider = document.getElementById('tts-rate-slider');
 
     // App State
-    let pagesData = {
-        "page1": {
-            title: "Sample Page 1",
-            content: { ops: [{ insert: 'Welcome! You can edit this text and use the toolbar to format it, including highlighting sections by changing their background color.\n' }] }
-        },
-    };
+    let pagesData = { "page1": { title: "Sample Page 1", content: { ops: [{ insert: 'Welcome! You can edit this text and use the toolbar to format it, including highlighting sections by changing their background color.\n' }] } } };
     let currentPageId = null;
     let quill = null;
-    const artyom = new Artyom();
+    let voices = [];
 
     // --- State Management ---
     function saveState() {
         if (quill && currentPageId && pagesData[currentPageId]) {
             pagesData[currentPageId].content = quill.getContents();
         }
-        try {
-            localStorage.setItem('pagesData', JSON.stringify(pagesData));
-        } catch (e) { console.error("Could not save state", e); }
+        try { localStorage.setItem('pagesData', JSON.stringify(pagesData)); } catch (e) { console.error("Could not save state", e); }
     }
 
     function loadState() {
         try {
             const savedData = localStorage.getItem('pagesData');
-            if (savedData && Object.keys(JSON.parse(savedData)).length > 0) {
-                pagesData = JSON.parse(savedData);
-            }
+            if (savedData && Object.keys(JSON.parse(savedData)).length > 0) pagesData = JSON.parse(savedData);
         } catch (e) { console.error("Could not load state", e); }
     }
 
     // --- Page Management ---
     function renderPageList() {
         pageList.innerHTML = '';
-        if (Object.keys(pagesData).length === 0) {
-            pageList.innerHTML = '<li>No pages available.</li>';
-            return;
-        }
+        if (Object.keys(pagesData).length === 0) { pageList.innerHTML = '<li>No pages available.</li>'; return; }
         for (const pageId in pagesData) {
-            const page = pagesData[pageId];
             const li = document.createElement('li');
             const titleSpan = document.createElement('span');
-            titleSpan.textContent = page.title;
+            titleSpan.textContent = pagesData[pageId].title;
             titleSpan.className = 'page-title';
             titleSpan.addEventListener('dblclick', () => handleRename(pageId, titleSpan));
             li.appendChild(titleSpan);
@@ -95,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
         event.stopPropagation();
         const pageIdToDelete = event.target.dataset.pageId;
         if (confirm(`Are you sure you want to delete "${pagesData[pageIdToDelete].title}"?`)) {
+            speechSynthesis.cancel();
             delete pagesData[pageIdToDelete];
             saveState();
             renderPageList();
@@ -115,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadPage(pageId) {
         if (!pagesData[pageId] || !quill) return;
+        speechSynthesis.cancel();
         currentPageId = pageId;
         quill.setContents(pagesData[pageId].content);
         Array.from(pageList.children).forEach(li => li.classList.toggle('active', li.dataset.pageId === pageId));
@@ -149,82 +140,94 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Text-to-Speech ---
-    function handlePlay() {
-        if (artyom.isSpeaking()) {
-            // This is a limitation of the library wrapper, it doesn't expose underlying pause/resume
-            // So we just restart from the same spot.
-            handleStop();
-            // A small timeout to let the cancel take effect
-            setTimeout(startSpeech, 100);
-        } else {
-            startSpeech();
-        }
-    }
-
-    function startSpeech() {
-        const range = quill.getSelection();
-        let textToSpeak;
-        if (range && range.length > 0) {
-            textToSpeak = quill.getText(range.index, range.length);
-        } else {
-            const startIndex = range ? range.index : 0;
-            textToSpeak = quill.getText(startIndex);
-        }
-
-        if (!textToSpeak.trim()) {
-            alert("No text to speak from the current position.");
-            return;
-        }
-
-        artyom.say(textToSpeak, {
-            onStart: () => {
-                playBtn.style.display = 'none';
-                pauseBtn.style.display = 'inline-block';
-            },
-            onEnd: () => {
-                playBtn.style.display = 'inline-block';
-                pauseBtn.style.display = 'none';
-            }
+    function populateVoiceList() {
+        voices = speechSynthesis.getVoices();
+        voiceSelect.innerHTML = '';
+        voices.forEach(voice => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            option.setAttribute('data-name', voice.name);
+            voiceSelect.appendChild(option);
         });
     }
 
-    function handlePause() {
-        // Artyom's pause is for recognition, not synthesis. We use shutUp to stop it.
-        artyom.shutUp();
-        playBtn.style.display = 'inline-block';
-        pauseBtn.style.display = 'none';
+    function handlePlayPause() {
+        if (speechSynthesis.speaking && !speechSynthesis.paused) {
+            speechSynthesis.pause();
+        } else if (speechSynthesis.paused) {
+            speechSynthesis.resume();
+        } else {
+            const range = quill.getSelection();
+            let textToSpeak = range && range.length > 0 ? quill.getText(range.index, range.length) : quill.getText(range ? range.index : 0);
+            if (!textToSpeak.trim()) return alert("No text to speak.");
+
+            speechSynthesis.cancel(); // Clear any previous utterance
+
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            const selectedVoiceName = voiceSelect.selectedOptions[0].getAttribute('data-name');
+            utterance.voice = voices.find(voice => voice.name === selectedVoiceName);
+            utterance.rate = rateSlider.value;
+
+            utterance.onboundary = (event) => {
+                progress.value = (event.charIndex / textToSpeak.length) * 100;
+            };
+            utterance.onend = () => {
+                progress.value = 0;
+                playPauseBtn.textContent = '▶';
+            };
+
+            speechSynthesis.speak(utterance);
+        }
     }
 
-    function handleStop() {
-        artyom.shutUp();
-        playBtn.style.display = 'inline-block';
-        pauseBtn.style.display = 'none';
+    function handleTTSSettingChange() {
+        if (speechSynthesis.speaking) {
+            speechSynthesis.cancel();
+            setTimeout(handlePlayPause, 100);
+        }
+    }
+
+    function updateTTS_UI() {
+        if (!speechSynthesis) return;
+        if (speechSynthesis.paused) {
+             playPauseBtn.textContent = '▶';
+        } else if (speechSynthesis.speaking) {
+             playPauseBtn.textContent = '❚❚';
+        } else {
+             playPauseBtn.textContent = '▶';
+             progress.value = 0;
+        }
     }
 
     // --- Initial Setup ---
     function initialize() {
         loadState();
-        artyom.initialize({ lang: "en-GB", continuous: false, debug: true, listen: false })
-            .then(() => console.log("Artyom has been successfully initialized."))
-            .catch((err) => console.error("Artyom could not be initialized:", err));
+        quill = new Quill('#editor', {
+            theme: 'snow',
+            modules: { toolbar: [
+                [{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'background': ['rgba(255, 255, 0, 0.5)', 'rgba(255, 192, 203, 0.5)', 'rgba(173, 216, 230, 0.5)', false] }],
+                ['clean']
+            ] }
+        });
 
-        const toolbarOptions = [
-            [{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            [{ 'background': ['rgba(255, 255, 0, 0.5)', 'rgba(255, 192, 203, 0.5)', 'rgba(173, 216, 230, 0.5)', false] }],
-            ['clean']
-        ];
-        quill = new Quill('#editor', { theme: 'snow', modules: { toolbar: toolbarOptions } });
+        // TTS setup
+        populateVoiceList();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+        playPauseBtn.addEventListener('click', handlePlayPause);
+        voiceSelect.addEventListener('change', handleTTSSettingChange);
+        rateSlider.addEventListener('input', handleTTSSettingChange);
+        setInterval(updateTTS_UI, 250);
 
+        // Other event listeners
         quill.on('text-change', () => {
             clearTimeout(window.saveTimeout);
             window.saveTimeout = setTimeout(() => saveState(), 500);
         });
-
         fetchBtn.addEventListener('click', fetchAndDisplayArticle);
-        playBtn.addEventListener('click', handlePlay);
-        pauseBtn.addEventListener('click', handlePause);
-        stopBtn.addEventListener('click', handleStop);
         newPageBtn.addEventListener('click', handleNewPage);
 
         renderPageList();
