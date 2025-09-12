@@ -36,6 +36,25 @@ header h1 {
     font-size: 1.8em;
 }
 
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-controls button {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #f0f0f0;
+    transition: background-color 0.2s ease;
+}
+
+.header-controls button:hover {
+    background-color: #e0e0e0;
+}
+
 .url-fetch-container {
     width: 100%;
     padding: 1rem;

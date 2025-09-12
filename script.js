@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+window.onload = () => {
     // DOM Elements
     const pageList = document.getElementById('page-list');
     const urlInput = document.getElementById('url-input');
@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const pauseBtn = document.getElementById('pause-btn');
     const stopBtn = document.getElementById('stop-btn');
     const newPageBtn = document.getElementById('new-page-btn');
+    const authorizeButton = document.getElementById('authorize_button');
+    const signoutButton = document.getElementById('signout_button');
+    const exportButton = document.getElementById('export_button');
 
     // App State
     let pagesData = {};
@@ -15,6 +18,115 @@ document.addEventListener('DOMContentLoaded', () => {
     let quill = null;
     const artyom = new Artyom();
     const pageColors = ['#FFFFFF', '#FADAD6', '#FBF09B', '#D4F5A5', '#BCF5E8', '#D6F2FB', '#D2E1FC', '#E8DEF8', '#FCE4EC'];
+
+    // Google API State
+    const CLIENT_ID = '20752164254-oepmsepmaht3sqlalvmt112q3p7p159r.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/documents';
+    const DOCS_DISCOVERY_URL = 'https://docs.googleapis.com/$discovery/rest?version=v1';
+    let tokenClient;
+    let gapiInited = false;
+    let gisInited = false;
+
+    // --- Google API Functions ---
+    function gapiInit() {
+        gapi.client.init({
+            discoveryDocs: [DOCS_DISCOVERY_URL],
+        }).then(() => {
+            gapiInited = true;
+            maybeEnableButtons();
+        });
+    }
+
+    function gisInit() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: SCOPES,
+            callback: (tokenResponse) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                    localStorage.setItem('g_access_token', tokenResponse.access_token);
+                    gapi.client.setToken({ access_token: tokenResponse.access_token });
+                    maybeEnableButtons();
+                }
+            },
+        });
+        gisInited = true;
+        maybeEnableButtons();
+    }
+
+    function maybeEnableButtons() {
+        const accessToken = localStorage.getItem('g_access_token');
+        if (accessToken && gapiInited && gisInited) {
+            authorizeButton.style.display = 'none';
+            signoutButton.style.display = 'inline';
+            exportButton.style.display = 'inline';
+        } else {
+            authorizeButton.style.display = 'inline';
+            signoutButton.style.display = 'none';
+            exportButton.style.display = 'none';
+        }
+    }
+
+    function handleAuthClick() {
+        if (tokenClient) {
+            tokenClient.requestAccessToken({prompt: 'consent'});
+        }
+    }
+
+    function handleSignoutClick() {
+        const accessToken = localStorage.getItem('g_access_token');
+        if (accessToken) {
+            google.accounts.oauth2.revoke(accessToken, () => {
+                localStorage.removeItem('g_access_token');
+                gapi.client.setToken(null);
+                maybeEnableButtons();
+            });
+        }
+    }
+
+    async function handleExportToDocsClick() {
+        if (!currentPageId || !pagesData[currentPageId]) {
+            alert('Please select a page to export.');
+            return;
+        }
+
+        const page = pagesData[currentPageId];
+        const pageTitle = page.title;
+        const pageContent = quill.getText(); // Plain text for now
+
+        try {
+            exportButton.textContent = 'Exporting...';
+            exportButton.disabled = true;
+
+            const doc = await gapi.client.docs.documents.create({
+                title: pageTitle,
+            });
+
+            const docId = doc.result.documentId;
+
+            if (pageContent.trim().length > 0) {
+                await gapi.client.docs.documents.batchUpdate({
+                    documentId: docId,
+                    requests: [{
+                        insertText: {
+                            location: { index: 1 },
+                            text: pageContent,
+                        },
+                    }],
+                });
+            }
+
+            const docUrl = `https://docs.google.com/document/d/${docId}/edit`;
+            alert(`Document created successfully!`);
+            window.open(docUrl, '_blank');
+
+        } catch (err) {
+            alert('Error creating document: ' + err.message);
+            console.error(err);
+        } finally {
+            exportButton.textContent = 'Export to Google Docs';
+            exportButton.disabled = false;
+        }
+    }
 
 
     // --- State Management ---
@@ -59,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 pageOrder = [defaultPageId];
             }
 
-            // Ensure all pages have a color
             Object.values(pagesData).forEach(page => {
                 if (!page.color) {
                     page.color = pageColors[0];
@@ -117,7 +228,6 @@ document.addEventListener('DOMContentLoaded', () => {
             pageList.appendChild(li);
         });
 
-        // Update active class after rendering
         Array.from(pageList.children).forEach(li => {
             if (li.dataset && li.dataset.pageId) {
                 li.classList.toggle('active', li.dataset.pageId === currentPageId)
@@ -191,10 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadPage(pageId) {
         if (!pagesData[pageId] || !quill) return;
-        saveState(); // Save content of the currently active page.
+        saveState();
         currentPageId = pageId;
         quill.setContents(pagesData[pageId].content);
-        // Update active class on list items
         Array.from(pageList.children).forEach(li => {
             if (li.dataset && li.dataset.pageId) {
                 li.classList.toggle('active', li.dataset.pageId === pageId);
@@ -282,11 +391,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initial Setup ---
     function initialize() {
+        // Load local data first
         loadState();
+
+        // Init Google Auth
+        gapi.load('client', gapiInit);
+        gisInit();
+
+        // Init Artyom
         artyom.initialize({ lang: "en-GB", continuous: false, debug: true, listen: false })
             .then(() => console.log("Artyom has been successfully initialized."))
             .catch((err) => console.error("Artyom could not be initialized:", err));
 
+        // Init Quill
         const toolbarOptions = [
             [{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline'],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
@@ -300,12 +417,17 @@ document.addEventListener('DOMContentLoaded', () => {
             window.saveTimeout = setTimeout(() => saveState(), 500);
         });
 
+        // Add event listeners
         fetchBtn.addEventListener('click', fetchAndDisplayArticle);
         playBtn.addEventListener('click', handlePlay);
         pauseBtn.addEventListener('click', handlePause);
         stopBtn.addEventListener('click', handleStop);
         newPageBtn.addEventListener('click', handleNewPage);
+        authorizeButton.addEventListener('click', handleAuthClick);
+        signoutButton.addEventListener('click', handleSignoutClick);
+        exportButton.addEventListener('click', handleExportToDocsClick);
 
+        // Final UI setup
         renderPageList();
         const firstPageId = pageOrder[0];
         if (firstPageId) {
@@ -328,4 +450,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initialize();
-});
+};
